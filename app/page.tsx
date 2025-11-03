@@ -2,7 +2,7 @@
  * @file page.tsx
  * @description 쇼핑몰 홈페이지
  *
- * 히어로 섹션, 카테고리 필터링이 있는 전체 상품 섹션을 포함합니다.
+ * 히어로 섹션, 인기 상품 섹션, 카테고리 필터링이 있는 전체 상품 섹션을 포함합니다.
  */
 
 import Link from "next/link";
@@ -17,6 +17,23 @@ interface HomePageProps {
   searchParams: Promise<{
     category?: string;
   }>;
+}
+
+async function FeaturedProducts() {
+  // 인기 상품 조회 (최신 상품 기준)
+  const featuredProducts = await getProducts({ limit: 4 });
+
+  if (featuredProducts.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {featuredProducts.map((product) => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </div>
+  );
 }
 
 export default async function Home({ searchParams }: HomePageProps) {
@@ -61,6 +78,20 @@ export default async function Home({ searchParams }: HomePageProps) {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* 인기 상품 섹션 */}
+      <section className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-3xl font-bold">인기 상품</h2>
+          <Link href="/products">
+            <Button variant="ghost" className="gap-2">
+              전체 보기
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+        <FeaturedProducts />
       </section>
 
       {/* 전체 상품 섹션 */}
