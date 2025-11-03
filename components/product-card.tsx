@@ -1,51 +1,81 @@
-/**
- * @file product-card.tsx
- * @description 상품 카드 컴포넌트
- *
- * 상품 목록에서 사용되는 상품 카드 UI 컴포넌트입니다.
- */
+"use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import type { Product } from "@/types/product";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
-  product: Product;
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  category?: string | null;
+  stockQuantity: number;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
-  const imageUrl = product.image_url || "/logo.png"; // 기본 이미지
+/**
+ * 상품 카드 컴포넌트
+ *
+ * 상품 정보를 카드 형태로 표시하고,
+ * 클릭 시 상품 상세 페이지로 이동합니다.
+ */
+export function ProductCard({
+  id,
+  name,
+  description,
+  price,
+  category,
+  stockQuantity,
+}: ProductCardProps) {
+  const formattedPrice = new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency: "KRW",
+  }).format(Number(price));
 
   return (
-    <Link href={`/products/${product.id}`}>
-      <div className="group relative flex flex-col border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-        <div className="relative aspect-square bg-muted overflow-hidden">
-          <Image
-            src={imageUrl}
-            alt={product.name}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          />
+    <Link
+      href={`/products/${id}`}
+      className="group block rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:scale-[1.02]"
+    >
+      <div className="p-4">
+        {/* 이미지 플레이스홀더 */}
+        <div className="mb-4 aspect-square w-full overflow-hidden rounded-lg bg-muted">
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <span className="text-sm">이미지 없음</span>
+          </div>
         </div>
-        <div className="p-4 flex flex-col gap-2">
-          <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
-            {product.name}
+
+        {/* 상품 정보 */}
+        <div className="space-y-2">
+          {/* 카테고리 */}
+          {category && (
+            <span className="text-xs text-muted-foreground uppercase">
+              {category}
+            </span>
+          )}
+
+          {/* 상품명 */}
+          <h3 className="line-clamp-2 font-semibold leading-tight group-hover:text-primary transition-colors">
+            {name}
           </h3>
-          {product.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {product.description}
+
+          {/* 설명 */}
+          {description && (
+            <p className="line-clamp-2 text-sm text-muted-foreground">
+              {description}
             </p>
           )}
-          <div className="flex items-center justify-between mt-auto pt-2">
-            <span className="font-bold text-lg">
-              {product.price.toLocaleString()}원
+
+          {/* 가격 및 재고 */}
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-lg font-bold text-primary">
+              {formattedPrice}
             </span>
-            {(product.category_relation || product.category) && (
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                {product.category_relation?.name || product.category || ""}
+            {stockQuantity > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                재고 {stockQuantity}개
               </span>
+            ) : (
+              <span className="text-xs text-destructive">품절</span>
             )}
           </div>
         </div>

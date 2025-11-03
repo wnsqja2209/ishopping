@@ -1,123 +1,175 @@
-/**
- * @file page.tsx
- * @description 쇼핑몰 홈페이지
- *
- * 히어로 섹션, 인기 상품 섹션, 카테고리 필터링이 있는 전체 상품 섹션을 포함합니다.
- */
+"use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { getProducts } from "@/actions/get-products";
+import { getPopularProducts } from "@/actions/get-popular-products";
 import { ProductCard } from "@/components/product-card";
-import { getProducts } from "@/actions/product/get-products";
-import { getCategories } from "@/actions/product/get-categories";
-import { ArrowRight } from "lucide-react";
-import { CategoryFilter } from "@/components/category-filter";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-interface HomePageProps {
-  searchParams: Promise<{
-    category?: string;
-  }>;
-}
+type Product = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  category: string | null;
+  stock_quantity: number;
+};
 
-async function FeaturedProducts() {
-  // 인기 상품 조회 (최신 상품 기준)
-  const featuredProducts = await getProducts({ limit: 4 });
+const CATEGORIES = [
+  "전체",
+  "electronics",
+  "clothing",
+  "books",
+  "food",
+  "sports",
+  "beauty",
+  "home",
+];
 
-  if (featuredProducts.length === 0) {
-    return null;
-  }
+const CATEGORY_LABELS: Record<string, string> = {
+  전체: "전체",
+  electronics: "전자제품",
+  clothing: "의류",
+  books: "도서",
+  food: "식품",
+  sports: "스포츠",
+  beauty: "뷰티",
+  home: "생활/가정",
+};
+
+export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("전체");
+  const [loading, setLoading] = useState(true);
+  const [popularLoading, setPopularLoading] = useState(true);
+
+  // 상품 데이터 로드
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        const data = await getProducts();
+        setProducts(data as Product[]);
+        setFilteredProducts(data as Product[]);
+      } catch (error) {
+        console.error("상품 로드 오류:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
+  // 인기 상품 데이터 로드
+  useEffect(() => {
+    const loadPopularProducts = async () => {
+      try {
+        setPopularLoading(true);
+        const data = await getPopularProducts(8);
+        setPopularProducts(data as Product[]);
+      } catch (error) {
+        console.error("인기 상품 로드 오류:", error);
+      } finally {
+        setPopularLoading(false);
+      }
+    };
+
+    loadPopularProducts();
+  }, []);
+
+  // 카테고리 필터링
+  useEffect(() => {
+    if (selectedCategory === "전체") {
+      setFilteredProducts(products);
+    } else {
+      setFilteredProducts(
+        products.filter((product) => product.category === selectedCategory),
+      );
+    }
+  }, [selectedCategory, products]);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {featuredProducts.map((product) => (
-        <ProductCard key={product.id} product={product} />
-      ))}
-    </div>
-  );
-}
-
-export default async function Home({ searchParams }: HomePageProps) {
-  const params = await searchParams;
-  const selectedCategory = params.category;
-
-  // 카테고리 목록 조회
-  const categories = await getCategories();
-
-  // 선택된 카테고리에 따라 상품 조회
-  const products = await getProducts({
-    category: selectedCategory,
-    limit: selectedCategory ? undefined : 8, // 카테고리 선택 시 제한 없음
-  });
-
-  return (
-    <main className="space-y-16 py-8 px-4">
-      {/* 히어로 섹션 */}
-      <section className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-              세련된 의류를 만나보세요
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-              트렌디한 디자인과 편안한 착용감을 모두 만족시키는 의류 컬렉션을
-              선보입니다. 빠른 로그인과 간편한 결제로 쇼핑을 즐기세요.
-            </p>
-            <div className="flex gap-4">
-              <Link href="/products">
-                <Button size="lg" className="gap-2">
-                  상품 둘러보기
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
+    <main className="min-h-[calc(100vh-80px)] px-8 py-16 lg:py-24">
+      <section className="w-full max-w-7xl mx-auto">
+        {/* 인기 상품 섹션 */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold mb-8">인기 상품</h2>
+          {popularLoading ? (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground">
+                인기 상품을 불러오는 중...
+              </p>
             </div>
-          </div>
-          <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-            {/* TODO: 메인 배너 이미지 추가 */}
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <p className="text-lg">메인 배너 이미지</p>
+          ) : popularProducts.length > 0 ? (
+            <div className="flex overflow-x-auto gap-6 pb-4 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {popularProducts.map((product) => (
+                <div key={product.id} className="min-w-[280px] shrink-0">
+                  <ProductCard
+                    id={product.id}
+                    name={product.name}
+                    description={product.description}
+                    price={product.price}
+                    category={product.category}
+                    stockQuantity={product.stock_quantity}
+                  />
+                </div>
+              ))}
             </div>
-          </div>
+          ) : null}
         </div>
-      </section>
 
-      {/* 인기 상품 섹션 */}
-      <section className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-bold">인기 상품</h2>
-          <Link href="/products">
-            <Button variant="ghost" className="gap-2">
-              전체 보기
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-        <FeaturedProducts />
-      </section>
-
-      {/* 전체 상품 섹션 */}
-      <section className="max-w-7xl mx-auto">
+        {/* 제목 */}
         <h1 className="text-3xl font-bold mb-8">전체 상품</h1>
 
-        {/* 카테고리 필터 */}
-        <CategoryFilter
-          categories={categories}
-          selectedCategory={selectedCategory}
-        />
+        {/* 카테고리 필터 버튼 */}
+        <div className="mb-8 flex gap-2 overflow-x-auto pb-2">
+          {CATEGORIES.map((category) => (
+            <Button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              variant={selectedCategory === category ? "default" : "outline"}
+              size="sm"
+              className={cn(
+                "shrink-0 whitespace-nowrap",
+                selectedCategory === category &&
+                  "bg-primary text-primary-foreground",
+              )}
+            >
+              {CATEGORY_LABELS[category] || category}
+            </Button>
+          ))}
+        </div>
 
-        {/* 상품 목록 */}
-        {products.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+        {/* 상품 그리드 */}
+        {loading ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground">상품을 불러오는 중...</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground">
+              {selectedCategory === "전체"
+                ? "상품이 없습니다."
+                : `${CATEGORY_LABELS[selectedCategory]} 카테고리에 상품이 없습니다.`}
+            </p>
           </div>
         ) : (
-          <div className="text-center py-12 text-muted-foreground mt-8">
-            <p>
-              {selectedCategory
-                ? "해당 카테고리에 등록된 상품이 없습니다."
-                : "상품이 아직 등록되지 않았습니다."}
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                description={product.description}
+                price={product.price}
+                category={product.category}
+                stockQuantity={product.stock_quantity}
+              />
+            ))}
           </div>
         )}
       </section>
